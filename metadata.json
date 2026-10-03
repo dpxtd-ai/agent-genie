@@ -1,0 +1,7 @@
+{
+  "name": "Enterprise Angular & .NET MS SQL RAG Studio",
+  "description": "Enterprise Document RAG platform featuring Angular frontend architecture, .NET Core Web API with MS SQL Server vector storage, and Gemini AI agent retrieval.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

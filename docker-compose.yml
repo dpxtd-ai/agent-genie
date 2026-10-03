@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  # 1. Independent .NET 9 Web API Backend
+  dotnet-api:
+    build:
+      context: ./DotNet
+      dockerfile: Dockerfile
+    container_name: mssql_vector_dotnet_api
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__MsSqlVectorDb=Server=host.docker.internal,1433;Database=EnterpriseVectorDb;User Id=sa;Password=YourPassword123!;TrustServerCertificate=True;
+      - Gemini__ApiKey=${GEMINI_API_KEY}
+    restart: unless-stopped
+
+  # 2. Independent Angular 19 UI Frontend
+  angular-ui:
+    build:
+      context: ./Angular
+      dockerfile: Dockerfile
+    container_name: angular_rag_ui
+    ports:
+      - "4200:80"
+    depends_on:
+      - dotnet-api
+    restart: unless-stopped
