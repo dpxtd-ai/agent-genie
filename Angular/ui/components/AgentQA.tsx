@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import {
   Send,
   Bot,
@@ -29,7 +30,7 @@ export const AgentQA: React.FC<AgentQAProps> = ({
     {
       id: 'init-msg',
       role: 'agent',
-      text: `Hello! I am your Enterprise AI Agent powered by .NET 9, MS SQL Server 2025 Vector Engine, and Gemini AI.
+      text: `Hello! I am Genie your AI Agent.
 
 **Workflow when you send a message:**
 1. **Vector Conversion**: Your prompt is converted to a 768-dimensional vector embedding.
@@ -209,19 +210,51 @@ export const AgentQA: React.FC<AgentQAProps> = ({
                     <div>
                       <div className="font-bold text-sky-900 mb-0.5">Direct LLM General Knowledge Response</div>
                       <p className="text-sky-800 leading-relaxed">
-                        No matching records were found in the MS SQL Server Vector Store for this prompt. This answer is provided directly by the AI model (LLM knowledge).
+                        No matching records were found. Answer from LLM.
                       </p>
                     </div>
                   </div>
                 )}
 
-                {/* Body Content */}
-                <div className="whitespace-pre-wrap space-y-2 leading-relaxed">
-                  {msg.text
-                    .replace(/^>\s*💡\s*\*\*Note:\*\*[\s\S]*?(?=\n\n|\n[A-Z]|$)/i, '')
-                    .trim() || msg.text}
-                </div>
-
+                {/* Body Content with Markdown Support */}
+                {isUser ? (
+                  <div className="whitespace-pre-wrap">{msg.text}</div>
+                ) : (
+                  <div className="text-slate-800 leading-relaxed space-y-2">
+                    <ReactMarkdown
+                      components={{
+                        p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                        strong: ({ children }) => <strong className="font-semibold text-slate-900">{children}</strong>,
+                        ul: ({ children }) => <ul className="list-disc list-outside pl-4 space-y-1 mb-2.5">{children}</ul>,
+                        ol: ({ children }) => <ol className="list-decimal list-outside pl-4 space-y-1.5 mb-2.5">{children}</ol>,
+                        li: ({ children }) => <li className="leading-relaxed pl-0.5">{children}</li>,
+                        code: ({ children }) => (
+                          <code className="px-1.5 py-0.5 rounded bg-slate-100 text-indigo-700 font-mono text-[11px] sm:text-xs border border-slate-200">
+                            {children}
+                          </code>
+                        ),
+                        pre: ({ children }) => (
+                          <pre className="p-3 rounded-lg bg-slate-900 text-slate-100 font-mono text-xs overflow-x-auto my-2.5">
+                            {children}
+                          </pre>
+                        ),
+                        blockquote: ({ children }) => (
+                          <blockquote className="border-l-3 border-indigo-400 pl-3 py-1 my-2 bg-indigo-50/50 rounded-r text-slate-700 italic">
+                            {children}
+                          </blockquote>
+                        ),
+                        h1: ({ children }) => <h1 className="font-bold text-slate-900 text-base mt-2 mb-1">{children}</h1>,
+                        h2: ({ children }) => <h2 className="font-bold text-slate-900 text-sm mt-2 mb-1">{children}</h2>,
+                        h3: ({ children }) => <h3 className="font-bold text-slate-900 text-xs sm:text-sm mt-2 mb-1">{children}</h3>,
+                        hr: () => <hr className="border-slate-200 my-2.5" />
+                      }}
+                    >
+                      {msg.text
+                        .replace(/^>\s*💡\s*\*\*Note:\*\*[\s\S]*?(?=\n\n|\n[A-Z]|$)/i, '')
+                        .trim() || msg.text}
+                    </ReactMarkdown>
+                  </div>
+                )}
                 {/* Agent Proactive Clarifying Question Box */}
                 {!isUser && msg.clarification && (
                   <div className="mt-3.5 p-3.5 rounded-xl bg-amber-50/90 border border-amber-300 text-amber-950 text-xs">
