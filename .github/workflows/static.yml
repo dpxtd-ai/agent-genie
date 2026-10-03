@@ -1,0 +1,89 @@
+name: Build & Deploy Angular UI and .NET 9 Web API
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - "**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-and-api"
+  cancel-in-progress: false
+
+jobs:
+  # =======================================================
+  # 1. Build and Deploy Angular UI to GitHub Pages
+  # =======================================================
+  deploy-angular:
+    name: Build & Deploy Angular Frontend
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Frontend Dependencies
+        run: npm install
+
+      - name: Build Production Frontend
+        run: npm run build
+        env:
+          VITE_GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+  # =======================================================
+  # 2. Build & Package .NET 9 Web API Backend
+  # =======================================================
+  build-dotnet:
+    name: Build & Publish .NET 9 Backend API
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore Dependencies
+        run: dotnet restore DotNet/MsSqlVectorRag.csproj
+
+      - name: Build .NET API (Release)
+        run: dotnet build DotNet/MsSqlVectorRag.csproj -c Release --no-restore
+
+      - name: Publish .NET Standalone Web API
+        run: dotnet publish DotNet/MsSqlVectorRag.csproj -c Release -o ./publish-dotnet /p:UseAppHost=false
+
+      - name: Archive .NET 9 Release Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet9-mssql-vector-api-release
+          path: ./publish-dotnet
+          retention-days: 14
