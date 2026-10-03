@@ -202,20 +202,7 @@ export const AgentQA: React.FC<AgentQAProps> = ({
                     ? 'bg-indigo-600 text-white rounded-tr-xs'
                     : 'bg-white text-slate-800 border border-slate-200/90 rounded-tl-xs'
                 }`}
-              >
-                {/* Direct LLM Knowledge Notice Callout */}
-                {!isUser && (msg.text.includes('Note: This answer is provided directly by the AI model') || msg.text.includes('LLM knowledge')) && (
-                  <div className="mb-3 p-3 rounded-xl bg-sky-50 border border-sky-200 text-sky-950 text-xs flex items-start gap-2.5">
-                    <Sparkles className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-bold text-sky-900 mb-0.5">Direct LLM General Knowledge Response</div>
-                      <p className="text-sky-800 leading-relaxed">
-                        No matching records were found. Answer from LLM.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
+              > 
                 {/* Body Content with Markdown Support */}
                 {isUser ? (
                   <div className="whitespace-pre-wrap">{msg.text}</div>
@@ -255,6 +242,17 @@ export const AgentQA: React.FC<AgentQAProps> = ({
                     </ReactMarkdown>
                   </div>
                 )}
+                
+                {/* Direct LLM Knowledge Notice Callout */}
+                {!isUser && (msg.text.includes('Note: This answer is provided directly by the AI model') || msg.text.includes('LLM knowledge')) && (
+                  <div className="mb-3 p-3 rounded-xl bg-sky-50 border border-sky-200 text-sky-950 text-xs flex items-start gap-2.5">
+                    <Sparkles className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-sky-900 mb-0.5">No matching records were found. Answer from LLM.</div> 
+                    </div>
+                  </div>
+                )}
+
                 {/* Agent Proactive Clarifying Question Box */}
                 {!isUser && msg.clarification && (
                   <div className="mt-3.5 p-3.5 rounded-xl bg-amber-50/90 border border-amber-300 text-amber-950 text-xs">
