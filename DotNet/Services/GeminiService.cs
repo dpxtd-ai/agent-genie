@@ -105,9 +105,15 @@ Retrieved Context from MS SQL Server 2025 Vector Store:
 """"""
 
 Instructions:
-1. Provide a comprehensive, professional answer strictly grounded in the retrieved chunks.
-2. Cite the source files and chunk indices clearly.
-3. If the retrieved context leaves any parameter or choice open (for instance, asking about leave without specifying primary vs secondary caregiver, or SLA tier without specifying P1 vs P2), answer with what is known and formulate a specific clarifying question to help guide the user.
+1. Check if the user's question can be answered from the retrieved document context above.
+2. If YES (the context contains relevant enterprise document information):
+   - Provide a comprehensive, professional answer grounded in the retrieved chunks.
+   - Cite the source files and chunk indices clearly.
+3. If NO or UNRELATED (such as general knowledge questions like 'what is the capital of india?', geography, science, math, or topics not in uploaded files):
+   - Answer the question accurately and authoritatively using your general LLM knowledge.
+   - You MUST prepend the response with this exact note:
+   > 💡 **Note:** This answer is provided directly by the AI model (LLM knowledge) because no matching or relevant content was found in the indexed MS SQL documents.
+   - Do NOT cite or force unrelated document chunks into your answer.
 4. If you have a follow-up or clarifying question to ask the user, put it at the very end under the header: '### Clarifying Question for You:'
 ".Trim();
 

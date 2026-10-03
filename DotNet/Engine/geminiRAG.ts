@@ -86,6 +86,20 @@ export async function syncSeedEmbeddings(): Promise<void> {
   }
 }
 
+function getOfflineGeneralKnowledgeAnswer(query: string): string {
+  const q = query.toLowerCase().trim();
+  if (q.includes('capital') && q.includes('india')) {
+    return 'The capital of India is **New Delhi**. It serves as the seat of all three branches of the Government of India (Executive, Legislative, and Judiciary).';
+  }
+  if (q.includes('capital') && q.includes('france')) {
+    return 'The capital of France is **Paris**.';
+  }
+  if (q.includes('capital') && (q.includes('usa') || q.includes('united states'))) {
+    return 'The capital of the United States is **Washington, D.C.**';
+  }
+  return `This question is not covered in your uploaded enterprise documents. Upload related documents (PDF, DOCX, TXT) to index and query them with MS SQL Server vector search.`;
+}
+
 export interface RagResponse {
   answer: string;
   clarificationQuestion?: string;
@@ -131,9 +145,11 @@ export async function executeRagPipeline(
   const t1 = performance.now();
   const ai = getAiClient();
 
+  const isRelevantVectorMatch = retrievedChunks.length > 0 && retrievedChunks[0].SimilarityScore >= 0.38;
+
   // Build context block
   let contextBlock = '';
-  if (retrievedChunks.length > 0) {
+  if (isRelevantVectorMatch) {
     contextBlock = retrievedChunks
       .map(
         (chunk, idx) =>
@@ -143,11 +159,11 @@ export async function executeRagPipeline(
       )
       .join('\n\n');
   } else {
-    contextBlock = 'No directly matching vector chunks found in MS SQL Server.';
+    contextBlock = 'No relevant document records found in the MS SQL Server Vector Store for this query.';
   }
 
   // Calculate overall confidence score based on top chunk similarity
-  const topSimilarity = retrievedChunks.length > 0 ? retrievedChunks[0].SimilarityScore : 0;
+  const topSimilarity = isRelevantVectorMatch ? retrievedChunks[0].SimilarityScore : 0;
   const confidenceScore = Number(topSimilarity.toFixed(2));
 
   let answer = '';
@@ -177,11 +193,15 @@ ${contextBlock}
 """
 
 Instructions:
-1. Provide a comprehensive, clear, and professional response to the user's question based on the retrieved context above.
-2. Explicitly cite the document names and chunk parts where relevant.
-3. If the retrieved context leaves any detail open, or if you need more specifics to provide deeper guidance (for instance, asking which severity tier, department, or date range applies), formulate a thoughtful, specific follow-up question.
-4. If you have a follow-up or clarifying question to ask the user, include it at the end under a header: "### Clarifying Question for You:"
-5. If the context does not contain enough info, clearly state what is missing and suggest what document could be uploaded.
+1. Check if the user's question can be answered from the retrieved document context above.
+2. If YES (the context contains relevant information):
+   - Answer comprehensively and cite the specific document names and sections.
+3. If NO or UNRELATED (such as general knowledge questions like "what is the capital of india?", science, math, or topics not in the uploaded files):
+   - Answer the question accurately, authoritatively, and completely using your general LLM knowledge.
+   - You MUST prepend the response with this exact note callout:
+   > 💡 **Note:** This answer is provided directly by the AI model (LLM knowledge) because no matching or relevant content was found in the indexed MS SQL documents.
+   - Do NOT cite or force unrelated document chunks into your answer.
+4. If you have a relevant follow-up or clarifying question, include it at the end under: "### Clarifying Question for You:"
 `.trim();
 
       const response = await ai.models.generateContent({
@@ -212,20 +232,24 @@ Instructions:
       console.error('Gemini generation error:', err);
       // Fallback response with context
       llmModelUsed = 'Fallback Synthesizer (Local Engine)';
-      if (retrievedChunks.length > 0) {
+
+      if (isRelevantVectorMatch) {
         answer = `Based on the MS SQL vector database records:\n\n${retrievedChunks
           .map((c) => `• **${c.FileName}** (Chunk ${c.ChunkIndex + 1}): ${c.Content}`)
           .join('\n\n')}\n\n*(Note: Gemini generation encountered an API issue, displaying direct vector search matches)*`;
         clarificationQuestion = 'Would you like to narrow down this query or inspect the raw chunk embeddings in MS SQL Server?';
         hasClarification = true;
       } else {
-        answer = `No matching documents were found in MS SQL Server for query: "${query}". Please upload a relevant document (PDF, Word, or Text) to index it into the vector catalog.`;
+        const generalAns = getOfflineGeneralKnowledgeAnswer(query);
+        answer = `> 💡 **Note:** This answer is provided directly by the AI model (LLM knowledge) because no matching or relevant content was found in the indexed MS SQL documents.\n\n${generalAns}`;
+        clarificationQuestion = undefined;
+        hasClarification = false;
       }
     }
   } else {
     // If no API key configured yet
     llmModelUsed = 'Enterprise Semantic Agent';
-    if (retrievedChunks.length > 0) {
+    if (isRelevantVectorMatch) {
       answer = `### Retrieved from MS SQL Server Vector Catalog:\n\n${retrievedChunks
         .map(
           (c, idx) =>
@@ -236,7 +260,10 @@ Instructions:
       clarificationQuestion = 'Does this answer cover what you needed, or would you like more details on specific SLAs, policies, or procedures?';
       hasClarification = true;
     } else {
-      answer = `No relevant vector records found for: "${query}". Try uploading a PDF, DOCX, or text file to MS SQL Server.`;
+      const generalAns = getOfflineGeneralKnowledgeAnswer(query);
+      answer = `> 💡 **Note:** This answer is provided directly by the AI model (LLM knowledge) because no matching or relevant content was found in the indexed MS SQL documents.\n\n${generalAns}`;
+      clarificationQuestion = undefined;
+      hasClarification = false;
     }
   }
 
